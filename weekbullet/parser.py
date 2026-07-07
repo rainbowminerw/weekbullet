@@ -10,6 +10,7 @@ from weekbullet.model import (
     Document, Section, BulletItem, WeekHeader, DayEntry,
     LINE_SYMBOLS, SYMBOL_TASK, SYMBOL_OLD_OK, SYMBOL_EVENT,
 )
+from weekbullet.sorter import sort_document
 
 # ── 區塊標題常數 ──
 SEC_TASKS = '### 長期任務與未定時間項目'
@@ -267,6 +268,9 @@ class Parser:
 
         # 偵測週記錄中的非標準內容
         self._detect_weekly_nonstandard()
+
+        # 自動排序
+        sort_document(self.doc)
 
         return self.doc
 

@@ -213,6 +213,81 @@ class JournalMaintainer:
                 })
         return results
 
+    # ── 掃描 5：duplicate_section ──
+
+    def _scan_duplicate_section(self) -> list[dict]:
+        """偵測 ### 區塊重複出現（去重前掃描）"""
+        results = []
+        seen: dict[str, int] = {}  # section name → first line
+
+        for i, line in enumerate(self.lines):
+            if not RE_H3.match(line):
+                continue
+            for kw in KNOWN_SECTION_CONTAINS:
+                if kw in line:
+                    name = kw
+                    if name in seen:
+                        results.append({
+                            'type': 'duplicate_section',
+                            'line': i,
+                            'desc': f'重複區塊：{line.strip()}（首次於 L{seen[name]+1}）',
+                            'fixable': True,
+                        })
+                    else:
+                        seen[name] = i
+                    break
+        return results
+
+    def scan(self) -> list[dict]:
+        """掃描並回報所有可自動修復的問題"""
+        issues: list[dict] = []
+        issues.extend(self._scan_day_header_format())
+        issues.extend(self._scan_empty_week())
+        issues.extend(self._scan_missing_bullet())
+        issues.extend(self._scan_duplicate_day())
+        issues.extend(self._scan_duplicate_section())
+        return issues
+
+    # ── 深度修復：去重複 + 排序 ——
+
+    def fix_structure(self) -> list[dict]:
+        """進階修復：使用 parser→renderer 全重建。
+        
+        處理項目：
+        - 去掉重複的 ### 區塊（只保留第一組）
+        - 區塊內項目依各區塊規則排序
+        - 每週記錄依 newest first 排序
+        - 週內日依 newest first 排序
+        - 保留 preamble（特別要求區塊）和 tail
+        """
+        from weekbullet.backup import auto_backup
+        from weekbullet.parser import Parser
+        from weekbullet.renderer import _rebuild_all
+
+        # 用 parser 解析（內部已 auto-sort）
+        p = Parser()
+        text = Path(self.filepath).read_text(encoding='utf-8')
+        doc = p.parse(text)
+
+        # 全重建（跳過 line-based fallback）
+        result = _rebuild_all(doc)
+
+        # 備份 + 寫入
+        changes = []
+        with auto_backup(self.filepath):
+            Path(self.filepath).write_text(result, encoding='utf-8')
+
+        changes.append({
+            'type': 'fix_structure',
+            'line': 0,
+            'old': f'原始 {len(self.lines)} 行',
+            'new': f'重建後 {result.count(chr(10)) + 1} 行',
+        })
+        if p.anomalies:
+            for a in p.anomalies[:5]:
+                changes.append({'type': 'anomaly_note', 'line': 0, 'old': '', 'new': a})
+        return changes
+
     # ── 修復 ──
 
     def fix(self) -> list[dict]:

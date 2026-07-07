@@ -310,6 +310,17 @@ def maintain_fix(file: str | None):
     click.echo(m.print_fix(m.fix()))
 
 
+@maintain.command('restructure')
+@click.option('-f', '--file', type=str, default=None,
+              help='週記路徑（預設自動偵測）')
+def maintain_restructure(file: str | None):
+    """進階修復：去重複區塊 + 排序週記錄 + 排序區塊（將先備份）"""
+    from weekbullet.maintain import JournalMaintainer
+    path = file or DEFAULT_PATH
+    m = JournalMaintainer(path)
+    click.echo(m.print_fix(m.fix_structure()))
+
+
 cli.add_command(maintain)
 
 

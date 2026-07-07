@@ -17,6 +17,7 @@ from datetime import date as _date
 from weekbullet.model import BulletItem
 from weekbullet.parser import Parser, RE_DAY
 from weekbullet.renderer import load_for_edit, save_document
+from weekbullet.sorter import SECTION_SORTERS
 
 
 def _format_date_prefix(
@@ -122,6 +123,10 @@ def add_section_item(
         sym_display = f'{symbol}?' if pending else symbol
         return f'🔍 預覽：將新增「{sym_display} {final_text}」至「{sec.header}」'
     sec.items.append(item)
+    # 排序
+    sorter = SECTION_SORTERS.get(section_name)
+    if sorter:
+        sorter(sec.items)
     doc._dirty.add(section_name)
 
     save_document(doc)
