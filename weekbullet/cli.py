@@ -330,14 +330,16 @@ def add(ctx, dry_run):
 @click.option('--symbol', '-s', default='●',
               help='bullet 符號（預設 ●）')
 @click.option('-f', '--file', default=None, help='週記路徑')
+@click.option('--date', '-d', default=None, help='日期 YYYY-MM-DD（單日/截止日）')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD（與--date搭配表示區間）')
 @click.pass_context
-def task(ctx, text: str, symbol: str, file: str | None):
+def task(ctx, text: str, symbol: str, file: str | None, date: str | None, end_date: str | None):
     """新增長期任務"""
     from weekbullet.editor import add_section_item
     path = file or ctx.obj.get('file') or DEFAULT_PATH
     dry_run = ctx.obj.get('dry_run', False)
     try:
-        msg = add_section_item(path, 'tasks', text, symbol, dry_run=dry_run)
+        msg = add_section_item(path, 'tasks', text, symbol, dry_run=dry_run, date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)
@@ -347,12 +349,15 @@ def task(ctx, text: str, symbol: str, file: str | None):
 @add.command()
 @click.argument('text')
 @click.option('-f', '--file', default=None)
-def reminder(text: str, file: str | None):
+@click.option('--date', '-d', default=None, help='日期 YYYY-MM-DD（起始日）')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD')
+@click.pass_context
+def reminder(ctx, text: str, file: str | None, date: str | None, end_date: str | None):
     """新增週期性提醒"""
     from weekbullet.editor import add_section_item
-    path = file or DEFAULT_PATH
+    path = file or ctx.obj.get('file') or DEFAULT_PATH
     try:
-        msg = add_section_item(path, 'reminders', text, '○')
+        msg = add_section_item(path, 'reminders', text, '○', date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)
@@ -363,12 +368,15 @@ def reminder(text: str, file: str | None):
 @click.argument('text')
 @click.option('--symbol', '-s', default='●')
 @click.option('-f', '--file', default=None)
-def schedule(text: str, symbol: str, file: str | None):
+@click.option('--date', '-d', default=None, help='日期 YYYY-MM-DD（起始日）')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD')
+@click.pass_context
+def schedule(ctx, text: str, symbol: str, file: str | None, date: str | None, end_date: str | None):
     """新增重要行程"""
     from weekbullet.editor import add_section_item
-    path = file or DEFAULT_PATH
+    path = file or ctx.obj.get('file') or DEFAULT_PATH
     try:
-        msg = add_section_item(path, 'schedule', text, symbol)
+        msg = add_section_item(path, 'schedule', text, symbol, date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)
@@ -454,12 +462,14 @@ def edit(ctx, dry_run):
 @click.option('--symbol', '-s', default=None,
               help='新的 bullet 符號（不指定則保留原符號）')
 @click.option('-f', '--file', default=None)
-def task(index: int, new_text: str, symbol: str | None, file: str | None):
+@click.option('--date', '-d', default=None, help='設定日期 YYYY-MM-DD')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD')
+def task(index: int, new_text: str, symbol: str | None, file: str | None, date: str | None, end_date: str | None):
     """修改長期任務第 N 條"""
     from weekbullet.editor import edit_section_item
     path = file or DEFAULT_PATH
     try:
-        msg = edit_section_item(path, 'tasks', index, new_text, symbol)
+        msg = edit_section_item(path, 'tasks', index, new_text, symbol, date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)
@@ -470,12 +480,14 @@ def task(index: int, new_text: str, symbol: str | None, file: str | None):
 @click.argument('index', type=int)
 @click.argument('new_text')
 @click.option('-f', '--file', default=None)
-def reminder(index: int, new_text: str, file: str | None):
+@click.option('--date', '-d', default=None, help='設定日期 YYYY-MM-DD')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD')
+def reminder(index: int, new_text: str, file: str | None, date: str | None, end_date: str | None):
     """修改週期性提醒第 N 條"""
     from weekbullet.editor import edit_section_item
     path = file or DEFAULT_PATH
     try:
-        msg = edit_section_item(path, 'reminders', index, new_text)
+        msg = edit_section_item(path, 'reminders', index, new_text, date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)
@@ -486,12 +498,14 @@ def reminder(index: int, new_text: str, file: str | None):
 @click.argument('index', type=int)
 @click.argument('new_text')
 @click.option('-f', '--file', default=None)
-def schedule(index: int, new_text: str, file: str | None):
+@click.option('--date', '-d', default=None, help='設定日期 YYYY-MM-DD')
+@click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD')
+def schedule(index: int, new_text: str, file: str | None, date: str | None, end_date: str | None):
     """修改重要行程第 N 條"""
     from weekbullet.editor import edit_section_item
     path = file or DEFAULT_PATH
     try:
-        msg = edit_section_item(path, 'schedule', index, new_text)
+        msg = edit_section_item(path, 'schedule', index, new_text, date_str=date, end_str=end_date)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)

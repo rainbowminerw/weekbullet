@@ -18,11 +18,21 @@ from weekbullet.parser import Parser
 
 
 def _render_bullet(item: BulletItem) -> str:
-    if item.symbol == 'ok':
-        return f'ok✅ {item.text}'
-    if item.is_done and '✅' not in item.text:
-        return f'{item.symbol} ✅ {item.text}'
-    return f'{item.symbol} {item.text}'
+    """將 BulletItem 渲染為一行。
+    
+    新格式（v2）：
+    - 完成：● ok 內容、★ ok 內容
+    - 筆記：@@ 內容
+    - 舊格式 ok（行首）自動轉換為 ● ok
+    """
+    # 舊格式 ok 轉換
+    sym = '●' if item.symbol == 'ok' else item.symbol
+    text = item.text.lstrip('✅ ').strip()
+    if sym == '@@':
+        return f'@@ {text}'
+    if item.is_done:
+        return f'{sym} ok {text}'
+    return f'{sym} {text}'
 
 
 def _is_bullet_line(s: str) -> bool:
@@ -30,6 +40,8 @@ def _is_bullet_line(s: str) -> bool:
     st = s.strip()
     if not st:
         return False
+    if st.startswith('@@'):
+        return True
     if st[0] in '●○★✅⏳🎯⚠️Ｘ＞△－':
         return True
     if st.startswith('ok') and (len(st) < 3 or not st[2].isalpha()):

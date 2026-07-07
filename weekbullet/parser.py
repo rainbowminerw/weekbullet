@@ -8,7 +8,7 @@ from pathlib import Path
 
 from weekbullet.model import (
     Document, Section, BulletItem, WeekHeader, DayEntry,
-    LINE_SYMBOLS, SYMBOL_OPEN, SYMBOL_DONE_OK, SYMBOL_MAYBE,
+    LINE_SYMBOLS, SYMBOL_TASK, SYMBOL_OLD_OK, SYMBOL_EVENT,
 )
 
 # ── 區塊標題常數 ──
@@ -44,8 +44,14 @@ def is_bullet(line: str) -> bool:
     stripped = line.strip()
     if not stripped:
         return False
-    # ok 是字首無符號的完成標記（支援 ok✅ 複合符號）
+    # @@ 筆記格式
+    if stripped.startswith('@@'):
+        return True
+    # ok 是舊格式完成標記（支援 ok✅ 複合符號）
     if stripped.startswith('ok'):
+        return True
+    # ● ok 格式（任務符號 + ok）
+    if len(stripped) >= 4 and stripped[0] in '●★' and stripped[1:].lstrip().startswith('ok'):
         return True
     if stripped[0] in LINE_SYMBOLS:
         return True
@@ -57,6 +63,14 @@ def parse_bullet(line: str, line_no: int) -> BulletItem | None:
     stripped = line.strip()
     if not stripped:
         return None
+    # @@ 筆記格式
+    if stripped.startswith('@@'):
+        text = stripped[2:].strip()
+        return BulletItem(
+            line_no=line_no, raw=line,
+            symbol='@@', text=text,
+        )
+    # ok 是舊格式完成標記
     if stripped.startswith('ok'):
         # 支援 ok（ok 完成事項）和 ok✅（採購清單已完成）
         prefix_len = 3 if stripped.startswith('ok✅') else 3 if stripped.startswith('ok ') else 2
@@ -66,10 +80,30 @@ def parse_bullet(line: str, line_no: int) -> BulletItem | None:
             symbol='ok', text=text, is_done=True,
             tag=_extract_tag(text),
         )
+    # ● ok 新格式（任務符號 + ok）
+    if len(stripped) >= 4 and stripped[0] in '●★' and stripped[1:].lstrip().startswith('ok'):
+        sym = stripped[0]
+        text = stripped[1:].lstrip()
+        # 去掉開頭的 ok（含後面的空白）
+        if text.startswith('ok '):
+            text = text[3:].strip()
+        elif text == 'ok':
+            text = ''
+        else:
+            text = text[2:].lstrip()  # 'ok✅' 等
+        return BulletItem(
+            line_no=line_no, raw=line,
+            symbol=sym, text=text, is_done=True,
+            tag=_extract_tag(text),
+        )
     ch = stripped[0]
     if ch in LINE_SYMBOLS:
         text = stripped[1:].strip()
-        done = '✅' in text or stripped.startswith('ok ')
+        # 舊格式 ● ✅ → 標記為完成
+        done = text.startswith('✅') or text.startswith('ok')
+        # ✅ 在開頭則去除
+        if text.startswith('✅'):
+            text = text[1:].strip()
         return BulletItem(
             line_no=line_no, raw=line,
             symbol=ch, text=text, is_done=done,

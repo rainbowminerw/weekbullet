@@ -6,23 +6,37 @@ weekbullet — model.py
 from dataclasses import dataclass, field
 from typing import Optional
 
-# ── bulletnote 符號語意表 ──
-SYMBOL_OPEN = '●'       # 未定任務
-SYMBOL_MAYBE = '○'      # 活動/待確認
-SYMBOL_STAR = '★'       # 重要優先
-SYMBOL_DONE_OK = 'ok'   # 已完成（字首）
-SYMBOL_DONE_CHECK = '✅'  # 已完成（內嵌）
-SYMBOL_PROGRESS = '⏳'   # 進行中
-SYMBOL_GOAL = '🎯'      # 目標
-SYMBOL_WARN = '⚠️'       # 注意
-SYMBOL_CANCEL = 'Ｘ'    # 取消
-SYMBOL_TRANSFER = '＞'  # 轉移
-SYMBOL_TBD = '△'        # 改期待訂
-SYMBOL_NOTE = '－'      # 筆記
+# ── bulletnote 符號語意表（v2 簡化版）──
+# 核心任務符號（行首）
+SYMBOL_TASK = '●'       # 一般任務
+SYMBOL_STAR = '★'       # 重要任務
+SYMBOL_EVENT = '○'      # 活動/約定
 
-LINE_SYMBOLS = {SYMBOL_OPEN, SYMBOL_MAYBE, SYMBOL_STAR, SYMBOL_DONE_CHECK,
-                SYMBOL_PROGRESS, SYMBOL_GOAL, SYMBOL_WARN, SYMBOL_CANCEL,
-                SYMBOL_TRANSFER, SYMBOL_TBD, SYMBOL_NOTE}
+# 完成標記：任務符號 + ok（如 ● ok、★ ok）
+# 子項目完成用 ✅
+
+# 狀態符號
+SYMBOL_CANCEL = 'Ｘ'    # 取消
+SYMBOL_TRANSFER = '＞'  # 轉移（標明轉移至何時）
+SYMBOL_TBD = '△'        # 待訂（抄寫至待定清單）
+SYMBOL_NOTE = '@@'      # 筆記（重要用 @@★）
+
+# 向後相容（舊格式仍可解析）
+SYMBOL_OLD_OK = 'ok'        # 舊格式：行首 ok（轉換為 ● ok）
+SYMBOL_OLD_CHECK = '✅'     # 舊格式：行首 ✅（轉換為 ● ok）
+SYMBOL_OLD_NOTE = '－'     # 舊格式：－ 筆記
+SYMBOL_OLD_PROGRESS = '⏳'  # 舊格式：進行中
+SYMBOL_OLD_GOAL = '🎯'     # 舊格式：目標
+SYMBOL_OLD_WARN = '⚠️'      # 舊格式：注意
+
+# 行首符號集合（含向後相容）
+LINE_SYMBOLS = {SYMBOL_TASK, SYMBOL_STAR, SYMBOL_EVENT,
+                SYMBOL_CANCEL, SYMBOL_TRANSFER, SYMBOL_TBD,
+                SYMBOL_OLD_CHECK, SYMBOL_OLD_PROGRESS, SYMBOL_OLD_GOAL,
+                SYMBOL_OLD_WARN, SYMBOL_OLD_NOTE}
+
+# 筆記符號集合（@@ 和向後相容 －）
+NOTE_SYMBOLS = {SYMBOL_NOTE, SYMBOL_OLD_NOTE}
 
 
 @dataclass
@@ -37,7 +51,10 @@ class BulletItem:
 
     @property
     def display_symbol(self) -> str:
-        return 'ok' if self.is_done else self.symbol
+        """顯示用符號（完成時顯示 ● ok）"""
+        if self.is_done:
+            return f'{self.symbol} ok' if self.symbol not in ('ok', '@@') else '● ok'
+        return self.symbol if self.symbol != 'ok' else '●'
 
 
 @dataclass

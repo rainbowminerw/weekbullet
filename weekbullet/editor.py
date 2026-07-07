@@ -19,6 +19,55 @@ from weekbullet.parser import Parser, RE_DAY
 from weekbullet.renderer import load_for_edit, save_document
 
 
+def _format_date_prefix(
+    date_str: str | None,
+    end_str: str | None,
+    section_name: str,
+    text: str,
+) -> str:
+    """依區塊類型將日期格式化為文字前綴/後綴。
+
+    schedule: 前綴 → M/D（週X）事件 或 M/D-D（週X～Y）事件
+    task:     後綴 → 事件（截止：M/D）或 事件（M/D-M/D）
+    reminder: 後綴 → 事件（M/D起）或 事件（M/D-M/D）
+
+    跨年處理：自動依各日期所屬年份計算星期。
+    """
+    if not date_str:
+        return text
+    from datetime import datetime as _dt
+    wdays = ['一', '二', '三', '四', '五', '六', '日']
+    start = _dt.strptime(date_str, '%Y-%m-%d')
+    sw = wdays[start.weekday()]
+    sf = f'{start.month}/{start.day}'
+
+    if section_name == 'schedule':
+        if end_str:
+            end = _dt.strptime(end_str, '%Y-%m-%d')
+            ew = wdays[end.weekday()]
+            ef = f'{end.month}/{end.day}'
+            if start.year != end.year:
+                return f'{sf}（{sw}）至 {ef}（{ew}）{text}'
+            if start.month == end.month:
+                return f'{sf}-{end.day}（{sw}～{ew}）{text}'
+            return f'{sf}（{sw}）至 {ef}（{ew}）{text}'
+        return f'{sf}（{sw}）{text}'
+
+    if section_name == 'tasks':
+        if end_str:
+            end = _dt.strptime(end_str, '%Y-%m-%d')
+            return f'{text}（{sf}-{end.month}/{end.day}）'
+        return f'{text}（截止：{sf}）'
+
+    if section_name == 'reminders':
+        if end_str:
+            end = _dt.strptime(end_str, '%Y-%m-%d')
+            return f'{text}（{sf}-{end.month}/{end.day}）'
+        return f'{text}（{sf}起）'
+
+    return text
+
+
 # ═══════════════════════════════════════════════
 # ### 區塊操作
 # ═══════════════════════════════════════════════
@@ -48,6 +97,8 @@ def add_section_item(
     text: str,
     symbol: str = '●',
     dry_run: bool = False,
+    date_str: str | None = None,
+    end_str: str | None = None,
 ) -> str:
     """在指定區塊新增一條 item（model-based）"""
     doc = load_for_edit(path)[0]
@@ -55,16 +106,18 @@ def add_section_item(
     if sec is None:
         raise ValueError(f'找不到「{section_name}」區塊')
 
+    final_text = _format_date_prefix(date_str, end_str, section_name, text)
+
     item = BulletItem(
         line_no=0,  # renderer 會重新計算
         raw='',
         symbol=symbol,
-        text=text,
+        text=final_text,
         is_done=(symbol == 'ok'),
         tag='',
     )
     if dry_run:
-        return f'🔍 預覽：將新增「{symbol} {text}」至「{sec.header}」'
+        return f'🔍 預覽：將新增「{symbol} {final_text}」至「{sec.header}」'
     sec.items.append(item)
     doc._dirty.add(section_name)
 
@@ -79,6 +132,8 @@ def edit_section_item(
     new_text: str | None = None,
     new_symbol: str | None = None,
     dry_run: bool = False,
+    date_str: str | None = None,
+    end_str: str | None = None,
 ) -> str:
     """修改區塊中第 N 條 item（1-based）"""
     doc = load_for_edit(path)[0]
@@ -96,8 +151,10 @@ def edit_section_item(
         item.symbol = new_symbol
         if new_symbol == 'ok':
             item.is_done = True
+    if date_str is not None:
+        item.text = _format_date_prefix(date_str, end_str, section_name, item.text)
     if dry_run:
-        return f'🔍 預覽：將修改第 {index} 項「{old}」→「{_render_item_str(item)}」'
+        return f'🔍 預覽：將修改第 {index} 項「{old}」→「{item.symbol} {item.text}」'
     doc._dirty.add(section_name)
 
     save_document(doc)
@@ -129,10 +186,12 @@ def delete_section_item(
 
 
 def _render_item_str(item: BulletItem) -> str:
-    s = f'{item.symbol} {item.text}'
-    if item.is_done and '✅' not in s:
-        s = s.replace(item.symbol, f'{item.symbol} ✅', 1)
-    return s
+    """簡易渲染（用於預覽/回顯）"""
+    sym = '●' if item.symbol == 'ok' else item.symbol
+    text = item.text.lstrip('✅ ').strip()
+    if item.is_done:
+        return f'{sym} ok {text}'
+    return f'{sym} {text}'
 
 
 # ═══════════════════════════════════════════════
