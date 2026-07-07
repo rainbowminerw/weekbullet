@@ -1,0 +1,20 @@
+# 套件
+venv/
+*.egg-info/
+__pycache__/
+*.pyc
+
+# 備份檔
+*.zip
+*.bak
+*.testbak
+
+# 內部文件（分享時排除）
+OPERATION_LOG.md
+CHANGELOG.md
+PLAN_Phase*.md
+maintain.py.txt
+
+# 系統
+.DS_Store
+Thumbs.db
