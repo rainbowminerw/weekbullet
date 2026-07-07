@@ -28,6 +28,8 @@ def _render_bullet(item: BulletItem) -> str:
     # 舊格式 ok 轉換
     sym = '●' if item.symbol == 'ok' else item.symbol
     text = item.text.lstrip('✅ ').strip()
+    if item.is_pending:
+        return f'{sym}? {text}'
     if sym == '@@':
         return f'@@ {text}'
     if item.is_done:

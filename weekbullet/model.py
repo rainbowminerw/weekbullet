@@ -47,14 +47,18 @@ class BulletItem:
     symbol: str             # bulletnote 符號（如 ●、ok）
     text: str               # 符號後的文字內容
     is_done: bool = False   # 是否已完成（ok 或含 ✅）
+    is_pending: bool = False  # 是否待確認（符號後加 ?）
     tag: str = ''           # 括號標籤如 (未定)、(聚餐)
 
     @property
     def display_symbol(self) -> str:
-        """顯示用符號（完成時顯示 ● ok）"""
+        """顯示用符號（完成時顯示 ● ok，待確認顯示 ●?）"""
+        sym = self.symbol if self.symbol != 'ok' else '●'
+        if self.is_pending:
+            return f'{sym}?'
         if self.is_done:
-            return f'{self.symbol} ok' if self.symbol not in ('ok', '@@') else '● ok'
-        return self.symbol if self.symbol != 'ok' else '●'
+            return f'{sym} ok'
+        return sym
 
 
 @dataclass

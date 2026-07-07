@@ -332,14 +332,15 @@ def add(ctx, dry_run):
 @click.option('-f', '--file', default=None, help='週記路徑')
 @click.option('--date', '-d', default=None, help='日期 YYYY-MM-DD（單日/截止日）')
 @click.option('--end', '-e', 'end_date', default=None, help='結束日 YYYY-MM-DD（與--date搭配表示區間）')
+@click.option('--pending', is_flag=True, default=False, help='標記為待確認（顯示 ●?）')
 @click.pass_context
-def task(ctx, text: str, symbol: str, file: str | None, date: str | None, end_date: str | None):
+def task(ctx, text: str, symbol: str, file: str | None, date: str | None, end_date: str | None, pending: bool):
     """新增長期任務"""
     from weekbullet.editor import add_section_item
     path = file or ctx.obj.get('file') or DEFAULT_PATH
     dry_run = ctx.obj.get('dry_run', False)
     try:
-        msg = add_section_item(path, 'tasks', text, symbol, dry_run=dry_run, date_str=date, end_str=end_date)
+        msg = add_section_item(path, 'tasks', text, symbol, dry_run=dry_run, date_str=date, end_str=end_date, pending=pending)
         click.echo(msg)
     except Exception as e:
         click.echo(f'❌ {e}', err=True)

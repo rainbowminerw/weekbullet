@@ -99,14 +99,18 @@ def parse_bullet(line: str, line_no: int) -> BulletItem | None:
     ch = stripped[0]
     if ch in LINE_SYMBOLS:
         text = stripped[1:].strip()
+        # ●? 待確認格式
+        pending = text.startswith('?')
+        if pending:
+            text = text[1:].strip()
         # 舊格式 ● ✅ → 標記為完成
-        done = text.startswith('✅') or text.startswith('ok')
+        done = not pending and (text.startswith('✅') or text.startswith('ok'))
         # ✅ 在開頭則去除
         if text.startswith('✅'):
             text = text[1:].strip()
         return BulletItem(
             line_no=line_no, raw=line,
-            symbol=ch, text=text, is_done=done,
+            symbol=ch, text=text, is_done=done, is_pending=pending,
             tag=_extract_tag(text),
         )
     return None

@@ -99,6 +99,7 @@ def add_section_item(
     dry_run: bool = False,
     date_str: str | None = None,
     end_str: str | None = None,
+    pending: bool = False,
 ) -> str:
     """在指定區塊新增一條 item（model-based）"""
     doc = load_for_edit(path)[0]
@@ -114,10 +115,12 @@ def add_section_item(
         symbol=symbol,
         text=final_text,
         is_done=(symbol == 'ok'),
+        is_pending=pending,
         tag='',
     )
     if dry_run:
-        return f'🔍 預覽：將新增「{symbol} {final_text}」至「{sec.header}」'
+        sym_display = f'{symbol}?' if pending else symbol
+        return f'🔍 預覽：將新增「{sym_display} {final_text}」至「{sec.header}」'
     sec.items.append(item)
     doc._dirty.add(section_name)
 
@@ -189,6 +192,8 @@ def _render_item_str(item: BulletItem) -> str:
     """簡易渲染（用於預覽/回顯）"""
     sym = '●' if item.symbol == 'ok' else item.symbol
     text = item.text.lstrip('✅ ').strip()
+    if item.is_pending:
+        return f'{sym}? {text}'
     if item.is_done:
         return f'{sym} ok {text}'
     return f'{sym} {text}'
